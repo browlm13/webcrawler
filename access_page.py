@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 def to_absolute_links(base_url, raw_links):
 	""" takes in list of raw links both relative and absolute and returns list of absolute links. """
+	raw_links = [l for l in raw_links if l is not None]
 	absolute_links = [l if l.startswith('http') else urljoin(base_url, l) for l in raw_links]
 	return list(absolute_links)
 
@@ -69,7 +70,9 @@ def get_page_data(url):
 				base_url = page_data['redirection_url']
 
 			#
-			# handling diffrent 'content_type''s
+			# handling diffrent 'content_type''s  
+			#	
+			#										(.txt, .htm, .html, .php)
 			#
 
 			### type "text/html"
@@ -94,7 +97,7 @@ def get_page_data(url):
 
 			### type "application/pdf"
 			elif page_data['content_type'] == 'application/pdf':
-				
+
 				pdf = BytesIO(response.content)
 				pdfReader = PyPDF2.PdfFileReader(pdf)
 				for page_number in range(pdfReader.numPages):
@@ -103,10 +106,17 @@ def get_page_data(url):
 					# set 'plain_text' page_data value
 					page_data['plain_text'] = page.extractText()
 
+			### type "text/plain"
+			elif page_data['content_type'] == 'text/plain':
+
+				# set 'plain_text' page_data value
+				page_data['plain_text'] = response.text
+
+			### type ""
+
+
 	except:
 		logger.error("Requested Page: %s, Failed to read." % page_data['requested_url'])
 
 
 	return page_data
-
-
