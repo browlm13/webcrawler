@@ -1,0 +1,82 @@
+#!/usr/bin/env python
+
+__author__ 	= "L.J. Brown"
+__version__ = "1.0.1"
+
+import logging
+import string
+import math
+
+import nltk
+from nltk.tokenize import RegexpTokenizer
+from nltk.stem import PorterStemmer
+
+# logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def extract_words(sentence):
+	""" Extract words from raw document and return list """
+	words = nltk.word_tokenize(sentence)
+	return words
+
+def is_stopword(word):
+	""" Return True of word is in stop word list """
+	stop_words = nltk.corpus.stopwords.words('english')
+	return word in stop_words
+
+def is_punctuation(word):
+	""" Return True if word is composed entirly of punctuation and whitespace """
+	if set(word) < set(string.punctuation + string.whitespace):
+		return True
+	return False
+
+def is_number(word):
+	""" Return True if word is number """
+	try:
+		float(word)
+		return True
+	except ValueError:
+		logger.debug('ValueError is_number')
+	try:
+		import unicodedata
+		unicodedata.numeric(word)
+		return True
+	except (TypeError, ValueError):
+		logger.debug('ValueError is_number')
+	return False
+
+def is_shorter(word,n=3):
+	""" Return True if word is shorter than n """
+	if len(word) < n:
+		return True
+	return False
+
+def stem(word):
+	""" stem word with PorterStemmer """
+	ps = PorterStemmer()
+	return ps.stem(word)
+
+def clean_word(raw_word):
+	""" Takes string converts to lower case, stems 
+	and returns empty string if word is stop word, 
+	punctation or is less than 3 characters long """
+
+	raw_word = raw_word.lower()
+	if is_stopword(raw_word) or is_punctuation(raw_word) or is_shorter(raw_word) or is_number(raw_word):
+		word = ""
+	else:
+		word = stem(raw_word)
+	return word
+
+def processes_and_tokenize(raw_document):
+	""" remove punctuation, convert to lower case, and return list of tokens """
+
+	tokenizer = RegexpTokenizer(r'\w+')
+	tokens = tokenizer.tokenize(raw_document.lower())		
+
+	#remove stop words
+	stop_words = set(nltk.corpus.stopwords.words('english'))
+	filtered_tokens = [w for w in tokens if not w in stop_words]
+
+	return filtered_tokens
