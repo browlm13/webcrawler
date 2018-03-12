@@ -80,3 +80,29 @@ def processes_and_tokenize(raw_document):
 	filtered_tokens = [w for w in tokens if not w in stop_words]
 
 	return filtered_tokens
+
+def set_clean_raw_text(raw_text):
+	""" tokenize sentence, convert to lower, stem, remove stop words, numbers, punctuation"""
+	logger.debug('Cleaning Text')
+
+	#tokenize and lower sentence
+	tokenizer = RegexpTokenizer(r'\w+')
+	tokens = tokenizer.tokenize(raw_text.lower())		# tokens = nltk.word_tokenize(corpus.lower()) # without removing punctiation
+
+	#remove stop words
+	tokens = [w for w in tokens if not is_stopword(w)]
+
+	#remove punctuation
+	tokens = [w for w in tokens if not is_punctuation(w)]
+
+	#remove short 
+	tokens = [w for w in tokens if not is_shorter(w)]
+
+	#remove number
+	tokens = [w for w in tokens if not is_number(w)]
+
+	#stem words
+	tokens = map(stem, tokens)
+
+	logger.debug('Cleaning Text Complete')
+	return set(tokens)
