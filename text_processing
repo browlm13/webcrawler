@@ -15,6 +15,9 @@ from nltk.stem import PorterStemmer
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+#####################
+### Text Processing
+
 def extract_words(sentence):
 	""" Extract words from raw document and return list """
 	words = nltk.word_tokenize(sentence)
@@ -57,37 +60,14 @@ def stem(word):
 	ps = PorterStemmer()
 	return ps.stem(word)
 
-def clean_word(raw_word):
-	""" Takes string converts to lower case, stems 
-	and returns empty string if word is stop word, 
-	punctation or is less than 3 characters long """
 
-	raw_word = raw_word.lower()
-	if is_stopword(raw_word) or is_punctuation(raw_word) or is_shorter(raw_word) or is_number(raw_word):
-		word = ""
-	else:
-		word = stem(raw_word)
-	return word
-
-def processes_and_tokenize(raw_document):
-	""" remove punctuation, convert to lower case, and return list of tokens """
-
-	tokenizer = RegexpTokenizer(r'\w+')
-	tokens = tokenizer.tokenize(raw_document.lower())		
-
-	#remove stop words
-	stop_words = set(nltk.corpus.stopwords.words('english'))
-	filtered_tokens = [w for w in tokens if not w in stop_words]
-
-	return filtered_tokens
-
-def set_clean_raw_text(raw_text):
+def plain_text_to_tokens(plain_text):
 	""" tokenize sentence, convert to lower, stem, remove stop words, numbers, punctuation"""
-	logger.debug('Cleaning Text')
+	logger.debug('Cleaning Plain Text')
 
 	#tokenize and lower sentence
 	tokenizer = RegexpTokenizer(r'\w+')
-	tokens = tokenizer.tokenize(raw_text.lower())		# tokens = nltk.word_tokenize(corpus.lower()) # without removing punctiation
+	tokens = tokenizer.tokenize(plain_text.lower())		# tokens = nltk.word_tokenize(corpus.lower()) # without removing punctiation
 
 	#remove stop words
 	tokens = [w for w in tokens if not is_stopword(w)]
@@ -104,5 +84,14 @@ def set_clean_raw_text(raw_text):
 	#stem words
 	tokens = map(stem, tokens)
 
-	logger.debug('Cleaning Text Complete')
-	return set(tokens)
+	return list(tokens)
+
+
+#####################
+### Text Statistics
+
+def word_frequency_dict(tokens):
+	""" returns a dictionary of word and their assosiated frequencies from token list """
+
+	fdist = FreqDist(tokens) 						# fdist.keys() fdist.values()
+	return dict(fdist)
