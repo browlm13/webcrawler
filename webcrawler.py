@@ -6,6 +6,7 @@ __version__ = "1.0.1"
 from urllib.parse import urljoin
 import os
 import logging
+import json
 
 #my lib
 from data_structures import data_structures as ds
@@ -72,6 +73,7 @@ class Crawler():
 		self.site_graph = {}
 		self.queue = ds.Queue()
 		self.url_alternates_map = {}
+		self.url_id_map = ds.DoubleDict()
 
 	def filter_urls(self, urls):
 
@@ -81,14 +83,16 @@ class Crawler():
 		# map urls
 		accepted_urls = list(set([self.url_alternates_map[url] for url in urls]))
 
+		# excluded_urls
+		excluded_urls = set()
+
 		#
 		# remove urls not within seed urls scope
 		#
 
 		for url in accepted_urls:
 			if not is_suburl(url, self.seed_url):
-				accepted_urls.remove(url)
-
+				excluded_urls.add(url)
 				logger.info("Out Of Bounds: %s" % url)
 
 		#
@@ -98,8 +102,7 @@ class Crawler():
 		for url in accepted_urls:
 			for furl in self.forbidden_urls:
 				if is_suburl(url, furl):
-					accepted_urls.remove(url)
-
+					excluded_urls.add(url)
 					logger.info("Access Not Permitted Robots.txt: %s" % url)
 
 		#
@@ -116,7 +119,7 @@ class Crawler():
 
 		for url in accepted_urls:
 			if url in indexed_urls:
-				accepted_urls.remove(url)
+				excluded_urls.add(url)
 
 		#
 		#	remove urls already in queue 
@@ -132,15 +135,18 @@ class Crawler():
 
 		for url in accepted_urls:
 			if url in queued_urls:
-				accepted_urls.remove(url)
+				excluded_urls.add(url)
+
+		# remove excluded urls
+		accepted_urls = set(accepted_urls).difference(excluded_urls)
 
 		# return unique accepted urls
-		return list(set(accepted_urls))
+		return list(accepted_urls)
 
 	def read_robots(self):
 
 		# create or update map
-		self.url_alternates_map = create_url_alternates_map([self.seed_url], self.url_alternates_map)
+		#self.url_alternates_map = create_url_alternates_map([self.seed_url], self.url_alternates_map)
 
 		# map url
 		seed_url = self.url_alternates_map[self.seed_url]
@@ -161,7 +167,6 @@ class Crawler():
 					# add site prefix
 					self.forbidden_urls.append(urljoin(seed_url,forbidden))
 	
-
 	def keep_indexing(self):
 
 		# stop if url queue is empty
@@ -174,29 +179,92 @@ class Crawler():
 
 		return True
 
-	def crawl_site(self, seed_url, max_urls_to_index=None, stopwords_file=None):
+	def document_directory_path(self, url_id):
+		# document directory
+		directory_name = "doc_%d" % url_id
+		directory_path = os.path.join(self.output_directory, directory_name)
+		return directory_path
 
-		self.seed_url = seed_url
+	# URL meta data (page_data w/out 'plain_text', add url_id)
+	def save_url_meta_data(self, url_meta_data):
+
+		logger.info("Saving URL Meta Data...")
+
+		# document directory
+		directory_path = self.document_directory_path(url_meta_data['url_id'])
+
+		# if output directory does not exist, create it
+		if not os.path.exists(directory_path): 
+			os.makedirs(directory_path)
+
+		#
+		# save url meta data file
+		#
+
+		filename = "url_meta_data_%d.json" % url_meta_data['url_id']
+		filepath = os.path.join(directory_path, filename)
+
+		with open(filepath, 'w') as file:
+			file.write(json.dumps(url_meta_data))
+
+		logger.info("Saved URL Meta Data.")
+
+
+	# Document ('tokens')
+	def save_document(self, tokens, url_id):
+
+		logger.info("Saving Document ('Tokens')...")
+
+		# document directory
+		directory_path = self.document_directory_path(url_id)
+
+		# if output directory does not exist, create it
+		if not os.path.exists(directory_path): 
+			os.makedirs(directory_path)
+
+		#
+		# save document ('tokens') file
+		#
+
+		filename = "tokens_%d.json" % url_id
+		filepath = os.path.join(directory_path, filename)
+
+		with open(filepath, 'w') as file:
+			file.write(json.dumps(tokens))
+
+		logger.info("Saved Document ('Tokens').")
+
+
+	def crawl_site(self, seed_url, output_directory, max_urls_to_index=None, stopwords_file=None):
+
+		self.output_directory = output_directory
 		self.max_urls_to_index = max_urls_to_index
 		self.stopwords_file = stopwords_file
+
+		# resolve seed url
+		self.url_alternates_map = create_url_alternates_map([seed_url], self.url_alternates_map)
+		self.seed_url = self.url_alternates_map[seed_url]
 
 		# set forbidden_urls
 		self.read_robots()
 
 		# add seed url to queue
-		self.queue.add(seed_url)
+		self.queue.add(self.seed_url)
 
 		# log info
-		logger.info("Begining Site Crawl: %s" % seed_url)
+		logger.info("Begining Site Crawl: %s" % self.seed_url)
 		if self.max_urls_to_index is not None:	logger.info("Number of Sites to Index: %d" % self.max_urls_to_index)
 		else:	logger.info("Index Forever")
 
-		# for log info
-		count = 1
+
 		while self.keep_indexing():
 
+			#
+			#	Crawl Next Site In Queue
+			#
+
 			# log info
-			logger.info("\nCrawling Site Number: %d" % count)
+			logger.info("\nCrawling Site Number: %d" % len(self.site_graph))
 
 			# remove url from queue and get page data
 			target_url = self.queue.remove()
@@ -207,9 +275,50 @@ class Crawler():
 			logger.info("\tContent Type: %s" % page_data['content_type'])
 			logger.info("\tBroken: %s" % page_data['broken'])
 
-			# add page data to graph
+			# update map with new links
+			self.url_alternates_map = create_url_alternates_map(page_data['absolute_out_links'], self.url_alternates_map)
+
+			# map absolute_out_links
+			page_data['absolute_out_links'] = list(set([self.url_alternates_map[aol] for aol in page_data['absolute_out_links']]))
+
+			#
+			#	Update Graph And Save:
+			#			* URL meta data (page_data w/out 'plain_text', add url_id)
+			#			* Document ('tokens')
+
 			assert target_url not in self.site_graph
-			self.site_graph[target_url] = page_data
+
+			# assign url "unique" id
+			url_id = len(self.site_graph)
+			self.url_id_map[target_url] = url_id
+
+			### 	URL meta data (page_data w/out 'plain_text', add url_id)
+
+			# create url meta data
+			url_meta_data = {k:v for k,v in page_data.items() if k != 'plain_text' }
+			url_meta_data['url_id'] = url_id
+
+			# save URL meta data
+			self.save_url_meta_data(url_meta_data)
+
+			# add url_meta_data to graph 
+			self.site_graph[target_url] = url_meta_data
+
+			### 	Document ('tokens')
+
+			# create Document ('tokens')
+			tokens = ""
+			if page_data['plain_text'] is not None:
+				tokens = text_processing.plain_text_to_tokens(page_data['plain_text'], self.stopwords_file)
+
+			# save Document ('tokens')
+			self.save_document(tokens, url_id)
+
+
+			#
+			#	Add New Urls To Queue And Continue Crawling
+			#
+
 
 			# filter new found urls and add to queue
 			new_urls = self.filter_urls(page_data['absolute_out_links'])
@@ -219,37 +328,16 @@ class Crawler():
 					logger.info("\t\t- %s" % u)
 					self.queue.add(u)
 
-			# for log info
-			count += 1
 
 		# log info
 		logger.info("Finished Site Crawl: %s" % self.seed_url)
 
-		#
-		#	term frequency matrix
-		#
-
-
-		# tmp print
-		print("\n\n")
-
-		for url,val in self.site_graph.items():
-			print(url) 
-			print(val['broken'])
-			print(val['content_type'])
-			print(val['document_hash'])
-			#
-			# tokenize plain text if applicable
-			#
-			if val['plain_text'] is not None:
-				val['tokens'] = text_processing.plain_text_to_tokens(val['plain_text'], self.stopwords_file)
-
-				print(val['tokens'])
 
 if __name__ == '__main__':
 
 	SEED_URL = "http://lyle.smu.edu/~fmoore/"
 	MAX_URLS_TO_INDEX = 3
 	STOPWORDS_FILE = "stopwords.txt"
+	OUTPUT_DIRECTORY = "output"
 	c = Crawler()
-	c.crawl_site(SEED_URL, MAX_URLS_TO_INDEX, STOPWORDS_FILE)
+	c.crawl_site(SEED_URL, OUTPUT_DIRECTORY, MAX_URLS_TO_INDEX, STOPWORDS_FILE)
