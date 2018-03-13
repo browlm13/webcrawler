@@ -174,10 +174,11 @@ class Crawler():
 
 		return True
 
-	def crawl_site(self, seed_url, max_urls_to_index=None):
+	def crawl_site(self, seed_url, max_urls_to_index=None, stopwords_file=None):
 
 		self.seed_url = seed_url
 		self.max_urls_to_index = max_urls_to_index
+		self.stopwords_file = stopwords_file
 
 		# set forbidden_urls
 		self.read_robots()
@@ -212,10 +213,10 @@ class Crawler():
 
 			# filter new found urls and add to queue
 			new_urls = self.filter_urls(page_data['absolute_out_links'])
-			logger.info("Adding New URLs to Queue:\n")
+			logger.info("Adding New URLs to Queue:")
 			if len(new_urls) > 0:
 				for u in new_urls:
-					logger.info("\t- %s" % u)
+					logger.info("\t\t- %s" % u)
 					self.queue.add(u)
 
 			# for log info
@@ -223,6 +224,11 @@ class Crawler():
 
 		# log info
 		logger.info("Finished Site Crawl: %s" % self.seed_url)
+
+		#
+		#	term frequency matrix
+		#
+
 
 		# tmp print
 		print("\n\n")
@@ -232,30 +238,18 @@ class Crawler():
 			print(val['broken'])
 			print(val['content_type'])
 			print(val['document_hash'])
-			print('\n')
+			#
+			# tokenize plain text if applicable
+			#
+			if val['plain_text'] is not None:
+				val['tokens'] = text_processing.plain_text_to_tokens(val['plain_text'], self.stopwords_file)
+
+				print(val['tokens'])
 
 if __name__ == '__main__':
 
 	SEED_URL = "http://lyle.smu.edu/~fmoore/"
 	MAX_URLS_TO_INDEX = 3
+	STOPWORDS_FILE = "stopwords.txt"
 	c = Crawler()
-	c.crawl_site(SEED_URL, MAX_URLS_TO_INDEX)
-
-
-"""
-
-	input:
-		-Seed websites (add to queue)
-		-N number of pages to index
-
-	output:
-		-sitemap
-		-urls and output urls
-		-broken links
-		-List the URLs of graphic (gif, jpg, jpeg, png) files
-		-save the words from each page of type (.txt, .htm, .html, .php)
-
-	features:
-		-exact dupliate detection
-
-"""
+	c.crawl_site(SEED_URL, MAX_URLS_TO_INDEX, STOPWORDS_FILE)
