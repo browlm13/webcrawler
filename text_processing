@@ -28,6 +28,12 @@ def is_stopword(word):
 	stop_words = nltk.corpus.stopwords.words('english')
 	return word in stop_words
 
+def list_from_stopwords_file(stopwords_file):
+	plain_text = None
+	with open(stopwords_file) as sf:
+		plain_text = sf.read()
+	return plain_text_to_tokens(plain_text)
+
 def is_punctuation(word):
 	""" Return True if word is composed entirly of punctuation and whitespace """
 	if set(word) < set(string.punctuation + string.whitespace):
@@ -60,17 +66,40 @@ def stem(word):
 	ps = PorterStemmer()
 	return ps.stem(word)
 
+def alphabetic_start(word):
+	""" Return True if word starts with an alphabetic character """
+	if word[0].isalpha():
+		return True
+	return False
 
-def plain_text_to_tokens(plain_text):
+def alphanumeric_end(word):
+	""" Return True if word ends with an alphanumeric (letter or number) character """
+	if word[-1].isalnum():
+		return True
+	return False
+
+def plain_text_to_tokens(plain_text, stopwords_file=None):
 	""" tokenize sentence, convert to lower, stem, remove stop words, numbers, punctuation"""
 	logger.debug('Cleaning Plain Text')
 
-	#tokenize and lower sentence
-	tokenizer = RegexpTokenizer(r'\w+')
-	tokens = tokenizer.tokenize(plain_text.lower())		# tokens = nltk.word_tokenize(corpus.lower()) # without removing punctiation
+	#tokenize sentence
+	tokens = extract_words(plain_text)
+
+	#lower
+	tokens = [t.lower() for t in tokens]
+
+	#remove words with no alphabetic start characters
+	tokens = [w for w in tokens if alphabetic_start(w)]
+
+	#remove words with no alphanumeric end characters
+	tokens = [w for w in tokens if alphanumeric_end(w)]
 
 	#remove stop words
-	tokens = [w for w in tokens if not is_stopword(w)]
+	if stopwords_file is None:
+		tokens = [w for w in tokens if not is_stopword(w)]
+	else:
+		stopwords = list_from_stopwords_file(stopwords_file)
+		token = [w for w in tokens if w not in stopwords]
 
 	#remove punctuation
 	tokens = [w for w in tokens if not is_punctuation(w)]
