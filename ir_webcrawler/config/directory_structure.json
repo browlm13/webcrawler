@@ -1,0 +1,26 @@
+{
+    "path_templates" :
+        {
+            "directory_structure_file" :                  "collected_data/%s/directory_structure.json",
+            "log_file" :                                  "collected_data/%s/log.txt",
+            "resolved_url_map_file" :                     "collected_data/%s/resolved_url_map.json",
+            "url_id_map_file" :                           "collected_data/%s/url_id_map.json",
+            "document_directory_path_template" :          "collected_data/%s/documents/%s/",
+            "response_summaries_directory_path_template" :"collected_data/%s/response_summaries/",
+            "response_summaries_file_path_template" :     "collected_data/%s/response_summaries/response_summary_%d.json",
+            "document_tokens_file_path_template" :        "collected_data/%s/documents/%s/tokens.json"
+
+        },
+
+    "path_template_parameters" :
+        {
+            "directory_structure_file" :                      ["Output Directory"],
+            "log_file" :                                      ["Output Directory"],
+            "resolved_url_map_file" :                         ["Output Directory"],
+            "url_id_map_file" :                               ["Output Directory"],
+            "document_directory_path_template" :              ["Output Directory", "Document Hash"],
+            "response_summaries_directory_path_template" :    ["Output Directory"],
+            "response_summaries_file_path_template" :         ["Output Directory", "Resolved URL ID"],
+            "document_tokens_file_path_template" :            ["Output Directory", "Document Hash"]
+        }
+}
