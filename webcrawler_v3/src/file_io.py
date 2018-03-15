@@ -18,8 +18,7 @@ def load_directory_structure():
 
 def save(type, data, parameters_list):
     directory_structure_dict = load_directory_structure()
-    print(directory_structure_dict['path_templates'][type])
-    print(parameters_list)
+
     file_path = directory_structure_dict['path_templates'][type] % tuple(parameters_list)
     directory_path = os.path.split(file_path)[0]
 
