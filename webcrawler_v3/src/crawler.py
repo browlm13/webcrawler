@@ -35,8 +35,6 @@ def pull_summary(requested_url, included_attributes=("requested_url", "redirect_
         'status_code' : 404
     }
 
-    # set 'requested_url' value
-
     try:
 
         # make request
@@ -134,20 +132,7 @@ class Crawler():
 
     Index Web Page Summaries
     Index Term Frequency Dictionaries
-    
-    Indexer
-    
-        -URL_in_Index(url) # resolves and checks
-    
-        -Writing Web Page Summaries (Resolves URLs before writing) 
-        -URL : Indexed Resolved URL (URL_Resolver)
-        -URL : ID
-        
-        -Document_Content_in_Index(content_hash) # checks
-        
-        -Writing Document Content / Updating Indexed Document Hash : ID
-        -Hash : ID
-
+   
 """
 class URL_Indexer():
 
@@ -234,9 +219,3 @@ class Base_Station():
          """ Recieves a web page summary dictonary from a crawler. Checks the content hash for contnet already indexed."""
          self.document_indexer.save_term_frequency_dictionary(term_frequency_dictionary, content_hash, self.output_directory_name)
         
-
-
-url ="https://s2.smu.edu/~fmoore/"
-bs = Base_Station()
-c = Crawler(bs)
-c.crawl_site(url)
